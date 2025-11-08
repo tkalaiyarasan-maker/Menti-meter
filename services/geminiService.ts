@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 
 if (!process.env.API_KEY) {
@@ -7,52 +6,65 @@ if (!process.env.API_KEY) {
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
 
-const pollSchema = {
-  type: Type.OBJECT,
-  properties: {
-    question: {
-      type: Type.STRING,
-      description: "The poll question.",
-    },
-    options: {
-      type: Type.ARRAY,
-      description: "An array of 4-6 strings, each being a plausible option for the poll.",
-      items: {
+const presentationSchema = {
+    type: Type.OBJECT,
+    properties: {
+      title: {
         type: Type.STRING,
+        description: "A short, engaging title for the entire presentation or poll session, related to the topic."
       },
+      questions: {
+        type: Type.ARRAY,
+        description: "An array of 2-5 multiple-choice poll questions related to the topic.",
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            question: {
+              type: Type.STRING,
+              description: "The poll question.",
+            },
+            options: {
+              type: Type.ARRAY,
+              description: "An array of 3-5 strings, each being a plausible option for the poll.",
+              items: {
+                type: Type.STRING,
+              },
+            },
+          },
+          required: ["question", "options"],
+        }
+      }
     },
-  },
-  required: ["question", "options"],
+    required: ["title", "questions"],
 };
 
-export const generatePollFromTopic = async (topic: string): Promise<{ question: string; options: string[] }> => {
+export const generatePresentationFromTopic = async (topic: string): Promise<{ title: string; questions: { question: string; options: string[] }[] }> => {
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: `Generate a fun and engaging multiple-choice poll question about the following topic: "${topic}". Provide between 4 and 6 plausible options.`,
+      contents: `Generate a fun and engaging presentation with multiple-choice poll questions about the following topic: "${topic}". The presentation should have a title and between 2 and 5 questions. Each question should have between 3 and 5 plausible options.`,
       config: {
         responseMimeType: "application/json",
-        responseSchema: pollSchema,
+        responseSchema: presentationSchema,
       },
     });
 
     const text = response.text.trim();
-    const pollData = JSON.parse(text);
+    const presentationData = JSON.parse(text);
 
     if (
-      !pollData.question ||
-      !Array.isArray(pollData.options) ||
-      pollData.options.length < 2
+      !presentationData.title ||
+      !Array.isArray(presentationData.questions) ||
+      presentationData.questions.length === 0 ||
+      !presentationData.questions[0].question ||
+      !Array.isArray(presentationData.questions[0].options)
     ) {
       throw new Error("Invalid format received from Gemini API.");
     }
 
-    return {
-      question: pollData.question,
-      options: pollData.options,
-    };
+    return presentationData;
   } catch (error) {
-    console.error("Error generating poll with Gemini:", error);
-    throw new Error("Failed to generate poll. The API may be unavailable or the API key is invalid.");
+    console.error("Error generating presentation with Gemini:", error);
+    throw new Error("Failed to generate presentation. The API may be unavailable or the API key is invalid.");
   }
 };
