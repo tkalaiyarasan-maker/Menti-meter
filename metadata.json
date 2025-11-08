@@ -1,0 +1,5 @@
+{
+  "name": "Live Poll Pro",
+  "description": "A real-time polling application similar to Mentimeter, allowing an admin to create polls and participants to vote, with results visualized live. Features AI-powered question generation using Gemini.",
+  "requestFramePermissions": []
+}
